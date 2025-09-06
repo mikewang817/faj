@@ -1,10 +1,27 @@
 {
-  "name": "faj",
-  "version": "1.0.0",
-  "description": "Find A Job - Decentralized AI-powered job matching platform for developers",
+  "name": "faj-cli",
+  "version": "2.0.5",
+  "description": "FAJ - A powerful CLI resume builder with AI enhancement and multi-format export",
   "main": "dist/index.js",
+  "types": "dist/index.d.ts",
   "bin": {
     "faj": "./bin/faj"
+  },
+  "files": [
+    "dist/",
+    "bin/",
+    "public/",
+    "README.md",
+    "LICENSE",
+    "package.json"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mikewang817/faj.git"
+  },
+  "homepage": "https://github.com/mikewang817/faj#readme",
+  "bugs": {
+    "url": "https://github.com/mikewang817/faj/issues"
   },
   "scripts": {
     "build": "tsc",
@@ -21,15 +38,21 @@
   },
   "keywords": [
     "cli",
-    "job",
     "resume",
+    "cv",
+    "resume-builder",
     "ai",
-    "decentralized",
-    "ipfs",
+    "gemini",
+    "openai",
     "developer",
-    "recruiter"
+    "job",
+    "career",
+    "pdf",
+    "html",
+    "markdown",
+    "export"
   ],
-  "author": "",
+  "author": "Mike Wang <michael.wang817@gmail.com>",
   "license": "MIT",
   "dependencies": {
     "@google/generative-ai": "^0.24.1",

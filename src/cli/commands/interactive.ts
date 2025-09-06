@@ -84,11 +84,12 @@ export class InteractiveCommand {
 
   private async checkExistingConfig(): Promise<boolean> {
     try {
-      const configPath = path.join(process.env.HOME || '', '.faj', 'config.json');
+      const configPath = path.join(os.homedir(), '.faj', 'config.json');
       await fs.access(configPath);
       await this.configManager.load();
       const profile = await this.configManager.get('profile');
-      return profile !== null;
+      // Check if profile exists and has basic required info
+      return profile !== null && profile !== undefined && (profile as any).id;
     } catch {
       return false;
     }
@@ -96,23 +97,140 @@ export class InteractiveCommand {
 
   private async welcomeNewUser(): Promise<void> {
     console.clear();
-    console.log(chalk.cyan.bold('\n👋 Welcome to FAJ!\n'));
-    console.log(chalk.white('Let\'s create your professional resume in just a few minutes.\n'));
+    console.log(chalk.cyan.bold('\n👋 Welcome to FAJ / 欢迎使用FAJ!\n'));
+    console.log(chalk.white('Quick setup - just language and AI / 快速设置 - 仅需语言和AI配置\n'));
     
-    const { ready } = await inquirer.prompt([
+    // Quick language and AI setup
+    await this.quickSetup();
+    
+    // After setup, show main menu
+    await this.showMainMenu();
+  }
+  
+  private async quickSetup(): Promise<void> {
+    // Step 1: Language selection - same as in configureLanguages
+    const { primaryLang } = await inquirer.prompt([
+      {
+        type: 'list',
+        name: 'primaryLang',
+        message: 'Select your primary language / 选择主要语言:',
+        choices: [
+          { name: 'English', value: 'English' },
+          { name: 'Chinese (中文)', value: 'Chinese' },
+          { name: 'Spanish (Español)', value: 'Spanish' },
+          { name: 'French (Français)', value: 'French' },
+          { name: 'German (Deutsch)', value: 'German' },
+          { name: 'Japanese (日本語)', value: 'Japanese' },
+          { name: 'Korean (한국어)', value: 'Korean' },
+          { name: 'Portuguese', value: 'Portuguese' },
+          { name: 'Russian', value: 'Russian' },
+          { name: 'Italian', value: 'Italian' }
+        ],
+        default: 'Chinese'
+      }
+    ]);
+
+    const isChinese = primaryLang === 'Chinese';
+
+    // Step 2: AI Provider configuration - same as in configureAI
+    const { configureAI } = await inquirer.prompt([
       {
         type: 'confirm',
-        name: 'ready',
-        message: 'Ready to start?',
+        name: 'configureAI',
+        message: isChinese ? 
+          'AI可以帮你优化简历内容，现在配置吗？' : 
+          'AI can help optimize your resume. Configure now?',
         default: true
       }
     ]);
-    
-    if (ready) {
-      await this.createResume();
-    } else {
-      console.log(chalk.gray('\nCome back when you\'re ready! Just run: faj'));
+
+    let aiConfig = null;
+    if (configureAI) {
+      const { provider } = await inquirer.prompt([
+        {
+          type: 'list',
+          name: 'provider',
+          message: isChinese ? 'Choose AI provider / 选择AI提供商:' : 'Choose AI provider:',
+          choices: [
+            { name: '✨ Google Gemini (gemini-2.5-pro)', value: 'gemini' },
+            { name: '🧠 OpenAI (gpt-5)', value: 'openai' },
+            { name: '🚀 DeepSeek (deepseek-reasoner)', value: 'deepseek' },
+            { name: isChinese ? '稍后配置 / Skip' : 'Skip for now', value: 'skip' },
+          ],
+        },
+      ]);
+
+      if (provider !== 'skip') {
+        const { apiKey } = await inquirer.prompt([
+          {
+            type: 'password',
+            name: 'apiKey',
+            message: isChinese ? `输入${provider} API密钥:` : `Enter ${provider} API key:`,
+            mask: '*',
+            validate: (input) => input.length > 0 || 'API key required'
+          }
+        ]);
+
+        // Save API key - same as in configureAI
+        await this.configManager.setAIApiKey(provider as AIProvider, apiKey);
+        
+        // Set default model based on provider
+        const defaultModels: { [key: string]: string } = {
+          'gemini': 'gemini-2.5-pro',
+          'openai': 'gpt-5',
+          'deepseek': 'deepseek-reasoner'
+        };
+        
+        aiConfig = {
+          provider: provider as AIProvider,
+          apiKeys: {
+            [provider]: apiKey
+          },
+          models: defaultModels  // Include models like in configureAI
+        };
+      }
     }
+
+    // Save minimal configuration
+    const spinner = ora(isChinese ? '保存配置...' : 'Saving configuration...').start();
+    
+    try {
+      // Create minimal profile with languages array (consistent with configureLanguages)
+      const languages = primaryLang === 'Chinese' ? ['Chinese', 'English'] : 
+                       primaryLang === 'English' ? ['English'] : 
+                       [primaryLang, 'English'];
+      
+      const profile = {
+        id: this.generateId(),
+        role: 'developer' as const,
+        name: '',
+        email: '',
+        languages: languages,  // Primary language first in array
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+
+      await this.configManager.set('profile', profile);
+      
+      if (aiConfig) {
+        await this.configManager.set('ai', aiConfig);
+      }
+
+      spinner.succeed(isChinese ? '配置保存成功！' : 'Configuration saved!');
+      
+      console.log(chalk.green(
+        isChinese ? '\n✨ 设置完成！现在可以开始创建简历了。\n' : '\n✨ Setup complete! You can now start creating your resume.\n'
+      ));
+      
+    } catch (error) {
+      spinner.fail(isChinese ? '配置保存失败' : 'Failed to save configuration');
+      throw error;
+    }
+  }
+  
+  private generateId(): string {
+    return Math.random().toString(36).substring(2, 15) + 
+           Math.random().toString(36).substring(2, 15);
   }
 
   private async showMainMenu(directAction?: string): Promise<void> {

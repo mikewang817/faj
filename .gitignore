@@ -340,3 +340,44 @@ weights/
 .ipynb_checkpoints/
 !examples/*.ipynb
 !tutorials/*.ipynb
+
+# Shell scripts (local utilities)
+*.sh
+publish-npm.sh
+sync-to-github.sh
+fix-faj-path.sh
+
+# NPM publishing files
+NPM_PUBLISH_GUIDE.md
+.npmignore
+
+# Environment example files
+.env.example
+
+# Local test files
+test-*.js
+test-*.ts
+demo-*.js
+demo-*.ts
+
+# Temporary and backup files
+*.tmp
+*.bak
+*.backup
+*~
+
+# macOS files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+
+# Windows files
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Linux files
+.directory
+.Trash-*
