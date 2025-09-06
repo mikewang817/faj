@@ -1,0 +1,342 @@
+# Dependencies
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Build outputs
+dist/
+build/
+out/
+*.js
+*.js.map
+*.d.ts
+!jest.config.js
+!commitlint.config.js
+!webpack.config.js
+!rollup.config.js
+
+# TypeScript
+*.tsbuildinfo
+.tscache/
+tsconfig.tsbuildinfo
+
+# Testing
+coverage/
+.nyc_output/
+*.lcov
+.coverage
+test-results/
+test-report.html
+test-reports/
+*.test.js
+*.test.ts
+*.spec.js
+*.spec.ts
+tests/
+__tests__/
+__mocks__/
+TEST*.md
+test*.json
+*.test.json
+
+# IDE and Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*.swn
+*.bak
+*~
+.DS_Store
+Thumbs.db
+*.sublime-workspace
+*.sublime-project
+
+# Environment variables
+.env
+.env.*
+!.env.example
+!.env.template
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+.pnpm-debug.log*
+
+# Runtime data
+pids/
+*.pid
+*.seed
+*.pid.lock
+
+# Cache
+.npm/
+.eslintcache
+.stylelintcache
+.parcel-cache/
+.cache/
+.temp/
+.tmp/
+
+# Package manager files (keep package-lock.json for reproducible builds)
+.pnp.*
+.yarn/
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/sdks
+!.yarn/versions
+.yarn-integrity
+bower_components/
+
+# User data (FAJ specific)
+~/.faj/
+.faj/
+*.local.json
+experiences.json
+projects.json
+resumes/
+exports/
+userData/
+userdata/
+data/
+*.db
+*.sqlite
+*.sqlite3
+*.db-journal
+*.db-shm
+*.db-wal
+
+# Credentials and sensitive data
+*.key
+*.pem
+*.cert
+*.crt
+*.p12
+*.pfx
+credentials.json
+secrets.json
+api-keys.json
+*.enc
+
+# IPFS
+.ipfs/
+orbitdb/
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# Backup files
+*.backup
+*.bak
+*.old
+*.orig
+*.tmp
+
+# Archive files
+*.zip
+*.tar
+*.tar.gz
+*.tgz
+*.rar
+*.7z
+
+# Debug
+debug/
+.debug/
+
+# Documentation build
+docs/_build/
+docs/.docusaurus/
+docs/build/
+
+# Miscellaneous
+*.patch
+*.diff
+.history/
+.svn/
+.hg/
+
+# Temporary files
+tmp/
+temp/
+*.temp
+*.tmp.*
+.tmp.*
+
+# Project documentation and notes
+CLAUDE.md
+TODO.md
+NOTES.md
+IDEAS.md
+FEATURES.md
+IMPROVEMENTS.md
+AI_PROMPTS.md
+PDF_*.md
+*_SUMMARY.md
+*_SOLUTION.md
+*_REPORT.md
+PLANNING.md
+ARCHITECTURE.md
+DESIGN.md
+DEV_NOTES.md
+LOCAL_NOTES.md
+PRIVATE_*.md
+WIP_*.md
+DRAFT_*.md
+
+# Generated resume files
+resume.md
+resume.html
+resume.pdf
+resume.json
+resume_*.md
+resume_*.html
+resume_*.pdf
+my_resume.*
+generated_resume.*
+output_resume.*
+export_resume.*
+*.resume.*
+
+# Example and sample files
+examples/
+samples/
+demo/
+*.example
+*.sample
+*.demo
+example_*
+sample_*
+demo_*
+
+# Personal and private files
+personal/
+private/
+confidential/
+*.personal.*
+*.private.*
+*.confidential.*
+my_*
+user_*
+
+# Scratch and draft files
+scratch/
+drafts/
+*.draft
+*.scratch
+*.wip
+work-in-progress/
+
+# Local configuration overrides
+*.local
+*.local.*
+local.*
+!.env.local
+config.local.json
+settings.local.json
+
+# Screenshots and media files
+screenshots/
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.svg
+*.ico
+*.webp
+*.bmp
+!public/*.png
+!public/*.jpg
+!public/*.svg
+!public/*.ico
+!assets/*.png
+!assets/*.jpg
+!assets/*.svg
+!src/assets/*.png
+!src/assets/*.jpg
+!src/assets/*.svg
+
+# Videos and audio
+*.mp4
+*.avi
+*.mov
+*.wmv
+*.flv
+*.webm
+*.mp3
+*.wav
+*.ogg
+
+# Fonts (keep specific project fonts)
+*.ttf
+*.otf
+*.woff
+*.woff2
+*.eot
+!fonts/*.ttf
+!fonts/*.otf
+!fonts/*.woff
+!fonts/*.woff2
+!public/fonts/*.ttf
+!public/fonts/*.otf
+!public/fonts/*.woff
+!public/fonts/*.woff2
+
+# Docker
+Dockerfile.local
+docker-compose.local.yml
+docker-compose.override.yml
+.dockerignore.local
+
+# Kubernetes
+*.kubeconfig
+kubeconfig
+k8s/secrets/
+k8s/local/
+
+# Terraform
+*.tfstate
+*.tfstate.*
+.terraform/
+terraform.tfvars
+*.auto.tfvars
+
+# Analytics and monitoring
+analytics/
+monitoring/
+metrics/
+*.analytics.*
+*.metrics.*
+
+# AI and ML model files
+models/
+*.model
+*.h5
+*.pkl
+*.joblib
+*.onnx
+*.pt
+*.pth
+checkpoints/
+weights/
+
+# Jupyter Notebooks (development)
+*.ipynb
+.ipynb_checkpoints/
+!examples/*.ipynb
+!tutorials/*.ipynb

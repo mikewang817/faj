@@ -1,0 +1,77 @@
+{
+  "fonts": [
+    {
+      "file": "NotoSansSC-Regular.ttf",
+      "family": "NotoSansSC",
+      "weight": "regular",
+      "displayName": "Noto Sans SC Regular"
+    },
+    {
+      "file": "NotoSansSC-Bold.ttf",
+      "family": "NotoSansSC",
+      "weight": "bold",
+      "displayName": "Noto Sans SC Bold"
+    },
+    {
+      "file": "Roboto-Regular.ttf",
+      "family": "Roboto",
+      "weight": "regular",
+      "displayName": "Roboto Regular"
+    },
+    {
+      "file": "Roboto-Bold.ttf",
+      "family": "Roboto",
+      "weight": "bold",
+      "displayName": "Roboto Bold"
+    },
+    {
+      "file": "OpenSans-Regular.ttf",
+      "family": "OpenSans",
+      "weight": "regular",
+      "displayName": "Open Sans Regular"
+    },
+    {
+      "file": "OpenSans-Bold.ttf",
+      "family": "OpenSans",
+      "weight": "bold",
+      "displayName": "Open Sans Bold"
+    },
+    {
+      "file": "Lato-Regular.ttf",
+      "family": "Lato",
+      "weight": "regular",
+      "displayName": "Lato Regular"
+    },
+    {
+      "file": "Lato-Bold.ttf",
+      "family": "Lato",
+      "weight": "bold",
+      "displayName": "Lato Bold"
+    },
+    {
+      "file": "Montserrat-Regular.ttf",
+      "family": "Montserrat",
+      "weight": "regular",
+      "displayName": "Montserrat Regular"
+    },
+    {
+      "file": "Montserrat-Bold.ttf",
+      "family": "Montserrat",
+      "weight": "bold",
+      "displayName": "Montserrat Bold"
+    },
+    {
+      "file": "PlayfairDisplay-Regular.ttf",
+      "family": "PlayfairDisplay",
+      "weight": "regular",
+      "displayName": "Playfair Display Regular"
+    },
+    {
+      "file": "PlayfairDisplay-Bold.ttf",
+      "family": "PlayfairDisplay",
+      "weight": "bold",
+      "displayName": "Playfair Display Bold"
+    }
+  ],
+  "generated": "2025-09-05T12:54:40.667Z"
+}
