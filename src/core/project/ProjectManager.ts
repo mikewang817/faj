@@ -257,6 +257,114 @@ Return the response in JSON format:
     }
   }
 
+  async tailorToJob(id: string, jobDescription: string): Promise<Project | null> {
+    const project = await this.get(id);
+    if (!project) {
+      this.logger.warn(`Project not found: ${id}`);
+      return null;
+    }
+
+    try {
+      // Get user's language preference
+      const profile: any = await this.configManager.get('profile');
+      const userLanguages = profile?.languages || ['English'];
+      const primaryLanguage = userLanguages[0];
+      
+      // Determine the language to use for AI response
+      let languageName = 'English';
+      if (primaryLanguage) {
+        const langLower = primaryLanguage.toLowerCase();
+        if (langLower.includes('chinese') || langLower.includes('中文') || langLower.includes('mandarin')) {
+          languageName = 'Chinese';
+        } else if (langLower.includes('spanish') || langLower.includes('español')) {
+          languageName = 'Spanish';
+        } else if (langLower.includes('french') || langLower.includes('français')) {
+          languageName = 'French';
+        } else if (langLower.includes('german') || langLower.includes('deutsch')) {
+          languageName = 'German';
+        } else if (langLower.includes('japanese') || langLower.includes('日本語')) {
+          languageName = 'Japanese';
+        } else if (langLower.includes('korean') || langLower.includes('한국어')) {
+          languageName = 'Korean';
+        }
+      }
+
+      // Build tailoring prompt
+      const prompt = `
+You are a professional resume writer. Tailor this project to match the job description while maintaining factual accuracy.
+
+JOB DESCRIPTION TO MATCH:
+${jobDescription}
+
+ACTUAL PROJECT DATA (DO NOT INVENT):
+- Project Name: ${project.name}
+- Current Description: ${project.description}
+- Actual Technologies: ${project.technologies.join(', ')}
+- Actual Metrics: ${project.metrics?.filesCount || 0} files, ${project.metrics?.linesOfCode || 0} lines of code
+- Current Highlights: ${project.highlights.join('\n')}
+${project.role ? `- Role: ${project.role}` : ''}
+${project.githubUrl ? `- GitHub: ${project.githubUrl}` : ''}
+
+STRICT RULES:
+1. NEVER invent features, metrics, or technologies not in the actual data
+2. Emphasize aspects of the project most relevant to the job description
+3. Reorder highlights to put the most job-relevant ones first
+4. Use job description keywords ONLY where they truthfully apply to this project
+5. If project technologies match job requirements, emphasize them
+6. Maintain complete factual accuracy - no speculation
+7. If job requirements aren't demonstrated by this project, DO NOT fabricate them
+
+TAILORING STRATEGY:
+- Identify key technologies and skills from the job description
+- Map existing project features to job requirements where truthful
+- Emphasize how the project demonstrates relevant skills
+- Adjust language to mirror job terminology where appropriate
+- Prioritize the most relevant technical achievements
+
+IMPORTANT: Generate ALL content in ${languageName} language.
+Base everything on actual project data - NO INVENTION.
+
+Return the response in JSON format:
+{
+  "description": "tailored description emphasizing job-relevant aspects",
+  "highlights": ["most job-relevant highlight", "next relevant highlight", ...],
+  "technologies": ["prioritize matching technologies", "other real technologies", ...]
+}`;
+
+      await this.aiManager.initialize();
+      const response = await this.aiManager.processPrompt(prompt);
+      
+      try {
+        // Clean up the response - remove markdown code blocks if present
+        let cleanedResponse = response;
+        if (response.includes('```json')) {
+          cleanedResponse = response.replace(/```json\s*/g, '').replace(/```\s*/g, '');
+        } else if (response.includes('```')) {
+          cleanedResponse = response.replace(/```\s*/g, '');
+        }
+        cleanedResponse = cleanedResponse.trim();
+        
+        const parsed = JSON.parse(cleanedResponse);
+        
+        const updated = await this.update(id, {
+          description: parsed.description || project.description,
+          highlights: parsed.highlights || project.highlights,
+          technologies: parsed.technologies || project.technologies,
+          polished: true
+        });
+
+        this.logger.success(`Tailored project to job description: ${project.name}`);
+        return updated;
+      } catch (parseError) {
+        this.logger.warn('Failed to parse AI response, using original');
+        return project;
+      }
+    } catch (error) {
+      this.logger.error('Failed to tailor project', error);
+      return project;
+    }
+  }
+
   private async ensureProjectsFile(): Promise<void> {
     const dir = path.dirname(this.projectsPath);
     try {

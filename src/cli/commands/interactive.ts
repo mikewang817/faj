@@ -262,6 +262,7 @@ export class InteractiveCommand {
           { name: '👀 View Resume', value: 'view' },
           { name: '➕ Add Content', value: 'add' },
           { name: '✏️  Edit Content', value: 'edit' },
+          { name: '🎯 Tailor Resume to Job', value: 'tailor' },
           { name: '📤 Export Resume', value: 'export' },
           { name: '🔧 Settings', value: 'settings' },
           { name: '🔄 Sync/Refresh', value: 'sync' },
@@ -320,6 +321,9 @@ export class InteractiveCommand {
         break;
       case 'edit':
         await this.editContent();
+        break;
+      case 'tailor':
+        await this.tailorResume();
         break;
       case 'export':
         await this.exportResume();
@@ -660,23 +664,65 @@ export class InteractiveCommand {
     // Try AI polish if configured
     const aiConfig = await this.configManager.get('ai');
     if (aiConfig) {
-      const { polish } = await inquirer.prompt([
+      // Ask if they want to optimize for a specific job
+      console.log(chalk.cyan('🎯 AI Enhancement Option'));
+      console.log(chalk.gray('You can optimize this experience for a specific job position.\n'));
+      
+      const { enhanceChoice } = await inquirer.prompt([
         {
-          type: 'confirm',
-          name: 'polish',
-          message: 'Would you like AI to enhance this description?',
-          default: true
+          type: 'list',
+          name: 'enhanceChoice',
+          message: 'How would you like to enhance this experience?',
+          choices: [
+            { name: '🎯 Optimize for specific job (paste JD)', value: 'with-jd' },
+            { name: '✨ General enhancement', value: 'general' },
+            { name: '⏭️  Skip enhancement', value: 'skip' }
+          ]
         }
       ]);
       
-      if (polish) {
+      if (enhanceChoice !== 'skip') {
+        let jobDescription = '';
+        
+        if (enhanceChoice === 'with-jd') {
+          console.log(chalk.yellow('\n📋 Paste the target job description:'));
+          console.log(chalk.gray('Type or paste the job description, then type "END" on a new line.\n'));
+          
+          const lines: string[] = [];
+          const readline = (await import('readline')).createInterface({
+            input: process.stdin,
+            output: process.stdout
+          });
+          
+          await new Promise<void>((resolve) => {
+            readline.on('line', (line) => {
+              if (line.trim().toUpperCase() === 'END') {
+                readline.close();
+                resolve();
+              } else {
+                lines.push(line);
+              }
+            });
+          });
+          
+          jobDescription = lines.join('\n');
+        }
+        
         const spinner = ora('AI is enhancing your experience...').start();
         try {
           await this.aiManager.initialize();
-          const polished = await this.experienceManager.polish(saved.id, experience.description);
+          
+          let polished;
+          if (jobDescription && jobDescription.trim()) {
+            // Enhance with job description context
+            polished = await this.experienceManager.polishWithJob(saved.id, experience.description, jobDescription);
+          } else {
+            // General enhancement
+            polished = await this.experienceManager.polish(saved.id, experience.description);
+          }
           
           if (polished) {
-            spinner.succeed('AI enhanced your experience!');
+            spinner.succeed(jobDescription ? 'Experience optimized for target job!' : 'AI enhanced your experience!');
             
             console.log(chalk.cyan('\n📝 Enhanced Version:\n'));
             console.log(polished.description);
@@ -684,6 +730,11 @@ export class InteractiveCommand {
             if (polished.highlights?.length > 0) {
               console.log(chalk.cyan('\n🎯 Key Achievements:'));
               polished.highlights.forEach(h => console.log(`  • ${h}`));
+            }
+            
+            if (jobDescription) {
+              console.log(chalk.green('\n✓ Your experience has been optimized for the target position'));
+              console.log(chalk.gray('The AI emphasized relevant skills matching the job requirements.'));
             }
             
             const { accept } = await inquirer.prompt([
@@ -2742,6 +2793,158 @@ IMPORTANT: Generate the ENTIRE summary in ${languageName} language.`;
       console.log();
     } catch (error: any) {
       spinner.fail(`Export failed: ${error.message}`);
+    }
+  }
+
+  private async tailorResume(): Promise<void> {
+    console.clear();
+    console.log(chalk.cyan.bold('\n🎯 Tailor Resume to Job Description\n'));
+    
+    // Check if resume exists
+    const resume = await this.resumeManager.get();
+    if (!resume) {
+      console.log(chalk.yellow('⚠️  No resume found. Please create a resume first.\n'));
+      await inquirer.prompt([{
+        type: 'input',
+        name: 'continue',
+        message: 'Press Enter to continue...'
+      }]);
+      return;
+    }
+
+    console.log(chalk.gray('This will optimize your resume to match a specific job description.'));
+    console.log(chalk.gray('Your experiences and projects will be tailored to emphasize relevant skills.\n'));
+
+    // Get job description input method
+    const { inputMethod } = await inquirer.prompt([
+      {
+        type: 'list',
+        name: 'inputMethod',
+        message: 'How would you like to provide the job description?',
+        choices: [
+          { name: '📝 Paste/Type Job Description', value: 'paste' },
+          { name: '📂 Load from File', value: 'file' },
+          { name: '🔗 Enter Job URL (Coming Soon)', value: 'url', disabled: true },
+          new inquirer.Separator(),
+          { name: '← Back', value: 'back' }
+        ]
+      }
+    ]);
+
+    if (inputMethod === 'back') {
+      return;
+    }
+
+    let jobDescription = '';
+
+    if (inputMethod === 'paste') {
+      console.log(chalk.cyan('\n📝 Job Description Input\n'));
+      console.log(chalk.gray('Paste or type the job description below.'));
+      console.log(chalk.gray('When finished, type "END" on a new line and press Enter.\n'));
+      
+      // Collect multi-line input
+      const lines: string[] = [];
+      const readline = (await import('readline')).createInterface({
+        input: process.stdin,
+        output: process.stdout
+      });
+      
+      console.log(chalk.yellow('Job Description (type "END" when done):\n'));
+      
+      await new Promise<void>((resolve) => {
+        readline.on('line', (line) => {
+          if (line.trim().toUpperCase() === 'END') {
+            readline.close();
+            resolve();
+          } else {
+            lines.push(line);
+          }
+        });
+      });
+      
+      jobDescription = lines.join('\n');
+      
+      if (!jobDescription || jobDescription.trim().length === 0) {
+        console.log(chalk.red('\n✗ Job description cannot be empty.\n'));
+        return;
+      }
+    } else if (inputMethod === 'file') {
+      const { filePath } = await inquirer.prompt([
+        {
+          type: 'input',
+          name: 'filePath',
+          message: 'Enter the path to the job description file:',
+          validate: async (input) => {
+            if (!input) return 'File path is required';
+            try {
+              const fs = await import('fs/promises');
+              await fs.access(input);
+              return true;
+            } catch {
+              return 'File not found. Please enter a valid file path.';
+            }
+          }
+        }
+      ]);
+      
+      const fs = await import('fs/promises');
+      jobDescription = await fs.readFile(filePath, 'utf-8');
+    }
+
+    if (!jobDescription || jobDescription.trim().length === 0) {
+      console.log(chalk.red('\n✗ Job description is empty. Operation cancelled.\n'));
+      return;
+    }
+
+    // Show preview of job description
+    console.log(chalk.gray('\n📋 Job Description Preview:'));
+    const preview = jobDescription.substring(0, 200);
+    console.log(chalk.gray(preview + (jobDescription.length > 200 ? '...' : '')));
+    console.log();
+
+    // Confirm before proceeding
+    const { confirm } = await inquirer.prompt([
+      {
+        type: 'confirm',
+        name: 'confirm',
+        message: 'Proceed with tailoring your resume to this job?',
+        default: true
+      }
+    ]);
+
+    if (!confirm) {
+      console.log(chalk.yellow('\nTailoring cancelled.\n'));
+      return;
+    }
+
+    // Tailor the resume
+    const spinner = ora('Tailoring resume to job description...').start();
+    
+    try {
+      await this.resumeManager.tailorToJob(jobDescription);
+      spinner.succeed('Resume tailored successfully!');
+      
+      console.log(chalk.green('\n✓ Your resume has been tailored to the job description'));
+      console.log(chalk.gray('  • Work experiences optimized'));
+      console.log(chalk.gray('  • Projects reordered by relevance'));
+      console.log(chalk.gray('  • Summary updated with relevant keywords\n'));
+
+      // Ask if user wants to export
+      const { shouldExport } = await inquirer.prompt([
+        {
+          type: 'confirm',
+          name: 'shouldExport',
+          message: 'Would you like to export the tailored resume now?',
+          default: true
+        }
+      ]);
+
+      if (shouldExport) {
+        await this.exportResume();
+      }
+    } catch (error: any) {
+      spinner.fail('Failed to tailor resume');
+      console.log(chalk.red(`\n✗ Error: ${error.message}\n`));
     }
   }
 

@@ -196,6 +196,73 @@ export class ExperienceManager {
     }
   }
 
+  async polishWithJob(id: string, rawDescription: string, jobDescription: string): Promise<WorkExperience | null> {
+    const experience = await this.get(id);
+    
+    if (!experience) {
+      this.logger.warn(`Experience with id ${id} not found`);
+      return null;
+    }
+
+    try {
+      await this.aiManager.initialize();
+      
+      const prompt = await this.buildPolishWithJobPrompt(experience, rawDescription, jobDescription);
+      const response = await this.aiManager.processPrompt(prompt);
+      
+      // Parse AI response
+      const polished = this.parsePolishResponse(response);
+      
+      // Update experience with polished content
+      const updated = await this.update(id, {
+        rawDescription,
+        description: polished.description,
+        highlights: polished.highlights,
+        technologies: polished.technologies || experience.technologies,
+        polished: true
+      });
+      
+      this.logger.success('Experience polished with job context successfully');
+      return updated;
+    } catch (error) {
+      this.logger.error('Failed to polish experience with job context', error);
+      throw error;
+    }
+  }
+
+  async tailorToJob(id: string, jobDescription: string): Promise<WorkExperience | null> {
+    const experience = await this.get(id);
+    
+    if (!experience) {
+      this.logger.warn(`Experience with id ${id} not found`);
+      return null;
+    }
+
+    try {
+      await this.aiManager.initialize();
+      
+      const prompt = await this.buildTailorPrompt(experience, jobDescription);
+      const response = await this.aiManager.processPrompt(prompt);
+      
+      // Parse AI response
+      const tailored = this.parsePolishResponse(response);
+      
+      // Update experience with tailored content
+      const updated = await this.update(id, {
+        description: tailored.description,
+        highlights: tailored.highlights,
+        technologies: tailored.technologies || experience.technologies,
+        polished: true
+      });
+      
+      this.logger.success('Experience tailored to job description successfully');
+      return updated;
+    } catch (error) {
+      this.logger.error('Failed to tailor experience', error);
+      throw error;
+    }
+  }
+
   private async buildPolishPrompt(experience: WorkExperience, rawDescription: string): Promise<string> {
     // Get user's language preference
     const profile: any = await this.configManager.get('profile');
@@ -260,6 +327,162 @@ Format as JSON:
   "description": "...",
   "highlights": ["actual achievement 1", "actual achievement 2", ...],
   "technologies": ["only real tech 1", "only real tech 2", ...]
+}`;
+  }
+
+  private async buildPolishWithJobPrompt(experience: WorkExperience, rawDescription: string, jobDescription: string): Promise<string> {
+    // Get user's language preference
+    const profile: any = await this.configManager.get('profile');
+    const userLanguages = profile?.languages || ['English'];
+    const primaryLanguage = userLanguages[0];
+    
+    // Determine the language to use for AI response
+    let languageName = 'English';
+    if (primaryLanguage) {
+      const langLower = primaryLanguage.toLowerCase();
+      if (langLower.includes('chinese') || langLower.includes('中文') || langLower.includes('mandarin')) {
+        languageName = 'Chinese';
+      } else if (langLower.includes('spanish') || langLower.includes('español')) {
+        languageName = 'Spanish';
+      } else if (langLower.includes('french') || langLower.includes('français')) {
+        languageName = 'French';
+      } else if (langLower.includes('german') || langLower.includes('deutsch')) {
+        languageName = 'German';
+      } else if (langLower.includes('japanese') || langLower.includes('日本語')) {
+        languageName = 'Japanese';
+      } else if (langLower.includes('korean') || langLower.includes('한국어')) {
+        languageName = 'Korean';
+      }
+    }
+    
+    return `You are a professional resume writer helping to polish and optimize work experiences.
+
+USER'S ACTUAL WORK (PRIMARY FOCUS - 70%):
+${rawDescription}
+
+Work Context:
+- Company: ${experience.company}
+- Position: ${experience.title}
+- Duration: ${experience.startDate} - ${experience.endDate || 'Present'}
+- Technologies used: ${experience.technologies?.join(', ') || 'Not specified'}
+
+TARGET JOB DESCRIPTION (For reference - 30%):
+${jobDescription}
+
+OPTIMIZATION STRATEGY:
+1. START with the user's actual work description - this is the foundation
+2. Polish and enhance the user's real experiences professionally
+3. Identify which parts of their ACTUAL work align with the JD
+4. Highlight and emphasize those naturally overlapping areas
+5. Use JD keywords ONLY where they genuinely apply to the user's work
+6. Add minor enhancements that are reasonable for their actual role
+
+ENHANCEMENT APPROACH:
+- Base 70% on what the user actually did and described
+- Use JD to identify which of their real experiences to emphasize
+- Enhance metrics with reasonable estimates based on their description
+- Add standard practices that someone in their specific role would do
+- Include technologies they mentioned plus closely related ones they likely used
+- Structure to highlight JD-relevant parts of their REAL experience
+
+IMPORTANT BOUNDARIES:
+- The user's actual work is the core - don't overshadow it with JD requirements
+- Only add skills/tasks that naturally fit with what they described
+- Don't force JD requirements that don't match their experience
+- Keep the authenticity of their unique experience at this company
+- Enhance but don't transform - it should still feel like their story
+
+OUTPUT:
+1. A professional summary based on their actual role, with JD-relevant aspects highlighted
+2. 5-6 bullet points: primarily their real work, with relevant ones emphasized for JD
+3. Technologies: what they used + reasonable additions from their ecosystem
+
+IMPORTANT: Generate ALL content in ${languageName} language.
+Polish their real experience while highlighting JD-relevant aspects.
+
+Format as JSON:
+{
+  "description": "professional summary of their actual work with relevant aspects emphasized",
+  "highlights": ["their actual achievement 1", "their actual achievement 2 (relevant to JD)", ...],
+  "technologies": ["their mentioned tech", "related tools they likely used", ...]
+}`;
+  }
+
+  private async buildTailorPrompt(experience: WorkExperience, jobDescription: string): Promise<string> {
+    // Get user's language preference
+    const profile: any = await this.configManager.get('profile');
+    const userLanguages = profile?.languages || ['English'];
+    const primaryLanguage = userLanguages[0];
+    
+    // Determine the language to use for AI response
+    let languageName = 'English';
+    if (primaryLanguage) {
+      const langLower = primaryLanguage.toLowerCase();
+      if (langLower.includes('chinese') || langLower.includes('中文') || langLower.includes('mandarin')) {
+        languageName = 'Chinese';
+      } else if (langLower.includes('spanish') || langLower.includes('español')) {
+        languageName = 'Spanish';
+      } else if (langLower.includes('french') || langLower.includes('français')) {
+        languageName = 'French';
+      } else if (langLower.includes('german') || langLower.includes('deutsch')) {
+        languageName = 'German';
+      } else if (langLower.includes('japanese') || langLower.includes('日本語')) {
+        languageName = 'Japanese';
+      } else if (langLower.includes('korean') || langLower.includes('한국어')) {
+        languageName = 'Korean';
+      }
+    }
+    
+    return `You are a professional resume writer helping to refine existing work experiences.
+
+EXISTING WORK EXPERIENCE (CORE CONTENT - 70%):
+- Company: ${experience.company}
+- Position: ${experience.title}
+- Duration: ${experience.startDate} - ${experience.endDate || 'Present'}
+- Current Description: ${experience.description}
+- Key Achievements: ${experience.highlights?.join('\n') || 'None'}
+- Technologies: ${experience.technologies?.join(', ') || 'Not specified'}
+${experience.rawDescription ? `- Original Description: ${experience.rawDescription}` : ''}
+
+TARGET JOB REFERENCE (GUIDANCE - 30%):
+${jobDescription}
+
+REFINEMENT STRATEGY:
+1. Keep the user's existing experience as the foundation
+2. Identify natural connections between their work and the JD
+3. Adjust presentation to highlight relevant aspects they already have
+4. Use JD keywords where they authentically apply to their experience
+5. Reorder content to feature JD-relevant work prominently (but keep all content)
+6. Polish language while maintaining their authentic experience
+
+ENHANCEMENT GUIDELINES:
+- Preserve the core of what they actually did
+- Highlight existing achievements that happen to match JD needs
+- Add reasonable details based on their role and company context
+- Include related technologies they likely used in their ecosystem
+- Improve metrics clarity where their description allows
+- Use professional language that reflects both their work and JD terms
+
+IMPORTANT LIMITS:
+- Don't add responsibilities they didn't have
+- Don't force-fit JD requirements that don't match
+- Keep their unique experience authentic
+- Maintain the truth of their actual contributions
+- Enhance presentation, not substance
+
+OUTPUT:
+1. A refined summary of their actual experience, with relevant aspects naturally emphasized
+2. 5-7 bullet points: all their real work, ordered to highlight JD-relevant items first
+3. Technologies: their actual stack plus reasonable ecosystem tools
+
+IMPORTANT: Generate ALL content in ${languageName} language.
+Refine their real experience with subtle JD alignment.
+
+Format as JSON:
+{
+  "description": "polished version of their actual experience",
+  "highlights": ["their refined achievement 1", "their achievement 2 (happens to match JD)", ...],
+  "technologies": ["their actual tech", "ecosystem tools", ...]
 }`;
   }
 

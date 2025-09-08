@@ -178,21 +178,12 @@ export class ExperienceCommand {
       {
         type: 'input',
         name: 'description',
-        message: 'Describe your experience (opens in editor):',
+        message: 'Describe your experience:',
         validate: (input) => input.length > 50 || 'Please provide at least 50 characters'
       }
     ]);
 
-    // Ask about key achievements
-    const { achievements } = await inquirer.prompt([
-      {
-        type: 'input',
-        name: 'achievements',
-        message: 'Key achievements (comma-separated, optional):'
-      }
-    ]);
-
-    // Ask about technologies
+    // Ask about technologies first
     const { technologies } = await inquirer.prompt([
       {
         type: 'input',
@@ -201,7 +192,50 @@ export class ExperienceCommand {
       }
     ]);
 
-    // Create experience object
+    // Now ask if they want to enhance with target job
+    console.log(chalk.cyan('\n🎯 AI Enhancement Option'));
+    console.log(chalk.gray('You can provide a target job description to optimize your experience.'));
+    
+    const { enhanceWithJob } = await inquirer.prompt([
+      {
+        type: 'confirm',
+        name: 'enhanceWithJob',
+        message: 'Would you like to optimize this experience for a specific job?',
+        default: true
+      }
+    ]);
+
+    let jobDescription = '';
+    
+    if (enhanceWithJob) {
+      console.log(chalk.yellow('\nProvide the target job description:'));
+      console.log(chalk.gray('Paste the job description and type "END" on a new line when done.\n'));
+      
+      const lines: string[] = [];
+      const readline = (await import('readline')).createInterface({
+        input: process.stdin,
+        output: process.stdout
+      });
+      
+      await new Promise<void>((resolve) => {
+        readline.on('line', (line) => {
+          if (line.trim().toUpperCase() === 'END') {
+            readline.close();
+            resolve();
+          } else {
+            lines.push(line);
+          }
+        });
+      });
+      
+      jobDescription = lines.join('\n');
+      
+      if (!jobDescription.trim()) {
+        console.log(chalk.yellow('No job description provided. Will use general enhancement.'));
+      }
+    }
+
+    // Create initial experience object
     const experience = {
       title: basicInfo.title,
       company: basicInfo.company,
@@ -210,19 +244,9 @@ export class ExperienceCommand {
       current: basicInfo.current,
       description: description,
       rawDescription: description,
-      highlights: achievements ? achievements.split(',').map((a: string) => a.trim()).filter(Boolean) : [],
+      highlights: [],
       technologies: technologies ? technologies.split(',').map((t: string) => t.trim()).filter(Boolean) : []
     };
-
-    // Ask if user wants to polish with AI
-    const { shouldPolish } = await inquirer.prompt([
-      {
-        type: 'confirm',
-        name: 'shouldPolish',
-        message: 'Would you like AI to polish this description?',
-        default: true
-      }
-    ]);
 
     const spinner = ora('Saving experience...').start();
     
@@ -230,21 +254,53 @@ export class ExperienceCommand {
       const saved = await this.experienceManager.add(experience);
       spinner.succeed('Experience added successfully!');
       
-      if (shouldPolish) {
-        spinner.start('Polishing with AI...');
-        const polished = await this.experienceManager.polish(saved.id, description);
+      // Now enhance with AI if user provided JD or wants general polish
+      if (jobDescription || enhanceWithJob) {
+        spinner.start('Enhancing experience with AI...');
+        
+        let polished;
+        if (jobDescription.trim()) {
+          // Enhance with job description context
+          polished = await this.experienceManager.polishWithJob(saved.id, description, jobDescription);
+        } else {
+          // Ask if they still want general polish
+          spinner.stop();
+          const { doGeneralPolish } = await inquirer.prompt([
+            {
+              type: 'confirm',
+              name: 'doGeneralPolish',
+              message: 'Would you like AI to polish this experience generally?',
+              default: true
+            }
+          ]);
+          
+          if (doGeneralPolish) {
+            spinner.start('Polishing experience...');
+            polished = await this.experienceManager.polish(saved.id, description);
+          }
+        }
         
         if (polished) {
-          spinner.succeed('Experience polished successfully!');
+          spinner.succeed(jobDescription ? 'Experience optimized for target job!' : 'Experience enhanced successfully!');
           
-          console.log(chalk.cyan('\n✨ Polished Description:\n'));
+          console.log(chalk.cyan('\n✨ AI-Enhanced Description:\n'));
           console.log(polished.description);
           
-          if (polished.highlights.length > 0) {
+          if (polished.highlights && polished.highlights.length > 0) {
             console.log(chalk.cyan('\n📊 Key Achievements:\n'));
             polished.highlights.forEach((h, i) => {
               console.log(`${i + 1}. ${h}`);
             });
+          }
+          
+          if (polished.technologies && polished.technologies.length > 0) {
+            console.log(chalk.cyan('\n💻 Technologies:\n'));
+            console.log(polished.technologies.join(', '));
+          }
+          
+          if (jobDescription) {
+            console.log(chalk.green('\n✓ Your experience has been optimized for the target position'));
+            console.log(chalk.gray('The AI emphasized relevant skills and achievements from your description.'));
           }
         }
       }

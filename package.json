@@ -1,6 +1,6 @@
 {
   "name": "faj-cli",
-  "version": "2.0.5",
+  "version": "2.0.6",
   "description": "FAJ - A powerful CLI resume builder with AI enhancement and multi-format export",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -52,7 +52,7 @@
     "markdown",
     "export"
   ],
-  "author": "Mike Wang <michael.wang817@gmail.com>",
+  "author": "michael.wang817@gmail.com",
   "license": "MIT",
   "dependencies": {
     "@google/generative-ai": "^0.24.1",

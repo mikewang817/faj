@@ -68,6 +68,20 @@ export class ResumeCommand {
           process.exit(1);
         }
       });
+
+    resume
+      .command('tailor')
+      .description('Tailor resume to a specific job description')
+      .option('-j, --job <file>', 'Path to job description file')
+      .option('-d, --description <text>', 'Job description text')
+      .action(async (options) => {
+        try {
+          await this.tailor(options);
+        } catch (error) {
+          this.logger.error('Failed to tailor resume', error);
+          process.exit(1);
+        }
+      });
   }
 
   private async show(options: any): Promise<void> {
@@ -278,6 +292,113 @@ export class ResumeCommand {
 
     console.log(chalk.yellow('\nTo regenerate, analyze your projects again:'));
     console.log(chalk.cyan('  faj analyze <project-paths>'));
+  }
+
+  private async tailor(options: any): Promise<void> {
+    const fs = await import('fs/promises');
+    
+    // Get job description from file or direct input
+    let jobDescription = '';
+    
+    if (options.job) {
+      // Read from file
+      try {
+        jobDescription = await fs.readFile(options.job, 'utf-8');
+      } catch (error) {
+        this.logger.error(`Failed to read job description file: ${options.job}`);
+        process.exit(1);
+      }
+    } else if (options.description) {
+      jobDescription = options.description;
+    } else {
+      // Interactive prompt for job description
+      const { inputMethod } = await inquirer.prompt([
+        {
+          type: 'list',
+          name: 'inputMethod',
+          message: 'How would you like to provide the job description?',
+          choices: [
+            { name: 'Paste text', value: 'text' },
+            { name: 'From file', value: 'file' },
+          ],
+        },
+      ]);
+
+      if (inputMethod === 'file') {
+        const { filePath } = await inquirer.prompt([
+          {
+            type: 'input',
+            name: 'filePath',
+            message: 'Enter the path to the job description file:',
+            validate: async (input) => {
+              try {
+                await fs.access(input);
+                return true;
+              } catch {
+                return 'File not found. Please enter a valid file path.';
+              }
+            },
+          },
+        ]);
+        jobDescription = await fs.readFile(filePath, 'utf-8');
+      } else {
+        const { description } = await inquirer.prompt([
+          {
+            type: 'editor',
+            name: 'description',
+            message: 'Paste the job description (save and close editor when done):',
+          },
+        ]);
+        jobDescription = description;
+      }
+    }
+
+    if (!jobDescription.trim()) {
+      this.logger.error('Job description cannot be empty');
+      process.exit(1);
+    }
+
+    const spinner = ora('Tailoring resume to job description...').start();
+    
+    try {
+      await this.resumeManager.tailorToJob(jobDescription);
+      spinner.succeed('Resume tailored successfully!');
+      
+      console.log(chalk.green('\n✓ Resume has been tailored to the job description'));
+      console.log(chalk.gray('Your experiences and projects have been optimized to match the job requirements.'));
+      
+      // Ask if user wants to export
+      const { shouldExport } = await inquirer.prompt([
+        {
+          type: 'confirm',
+          name: 'shouldExport',
+          message: 'Would you like to export the tailored resume?',
+          default: true,
+        },
+      ]);
+
+      if (shouldExport) {
+        const { exportFormat } = await inquirer.prompt([
+          {
+            type: 'list',
+            name: 'exportFormat',
+            message: 'Choose export format:',
+            choices: [
+              { name: 'PDF', value: 'pdf' },
+              { name: 'HTML', value: 'html' },
+              { name: 'Markdown', value: 'md' },
+              { name: 'JSON', value: 'json' },
+            ],
+          },
+        ]);
+
+        const outputPath = await this.resumeManager.export(exportFormat);
+        console.log(chalk.green(`\n✓ Tailored resume exported to: ${outputPath}`));
+      }
+    } catch (error) {
+      spinner.fail('Failed to tailor resume');
+      throw error;
+    }
   }
 
   private async export(format: string, options: any): Promise<void> {

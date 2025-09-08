@@ -338,6 +338,105 @@ export class ResumeManager {
     return md;
   }
 
+  async tailorToJob(jobDescription: string): Promise<Resume> {
+    if (!this.currentResume) {
+      await this.loadOrCreate();
+    }
+
+    const resume = this.currentResume!;
+    
+    try {
+      await this.aiManager.initialize();
+      
+      // Tailor experiences to job description
+      const experienceManager = ExperienceManager.getInstance();
+      await experienceManager.load();
+      
+      for (const experience of resume.content.experience || []) {
+        // Find matching experience in manager
+        const allExperiences = await experienceManager.getAll();
+        const matchingExp = allExperiences.find(e => 
+          e.company === experience.company && 
+          e.title === experience.title
+        );
+        
+        if (matchingExp) {
+          const tailored = await experienceManager.tailorToJob(matchingExp.id, jobDescription);
+          if (tailored) {
+            // Update resume with tailored content
+            experience.description = tailored.description;
+            experience.highlights = tailored.highlights;
+            experience.technologies = tailored.technologies;
+          }
+        }
+      }
+      
+      // Tailor projects to job description
+      const { ProjectManager } = await import('../project/ProjectManager');
+      const projectManager = ProjectManager.getInstance();
+      await projectManager.load();
+      
+      for (const project of resume.content.projects || []) {
+        // Find matching project in manager
+        const allProjects = await projectManager.getAll();
+        const matchingProj = allProjects.find(p => p.name === project.name);
+        
+        if (matchingProj) {
+          const tailored = await projectManager.tailorToJob(matchingProj.id, jobDescription);
+          if (tailored) {
+            // Update resume with tailored content
+            project.description = tailored.description;
+            project.highlights = tailored.highlights;
+            project.technologies = tailored.technologies;
+          }
+        }
+      }
+      
+      // Tailor summary to job description
+      const profile = await this.configManager.get('profile') as DeveloperProfile;
+      const prompt = `
+Tailor this professional summary to match the job description while maintaining truthfulness:
+
+JOB DESCRIPTION:
+${jobDescription}
+
+CURRENT SUMMARY:
+${resume.content.summary}
+
+CANDIDATE PROFILE:
+- Name: ${profile?.name}
+- Years of Experience: ${profile?.experience || 0}
+- Skills: ${profile?.skills?.join(', ') || 'Not specified'}
+- Languages: ${profile?.languages?.join(', ')}
+
+RULES:
+1. Keep the summary concise (2-3 sentences)
+2. Emphasize relevant skills and experience that match the job
+3. Use keywords from the job description where they truthfully apply
+4. Maintain factual accuracy - do not invent experience
+5. Keep a professional tone
+
+Generate the tailored summary in ${profile?.languages?.[0] || 'English'}.`;
+
+      const tailoredSummary = await this.aiManager.processPrompt(prompt);
+      resume.content.summary = tailoredSummary.trim();
+      
+      // Update resume metadata with tailoring info
+      (resume.metadata as any).lastTailored = new Date();
+      (resume.metadata as any).tailoredFor = jobDescription.substring(0, 100) + '...';
+      
+      // Save updated resume
+      this.currentResume = resume;
+      await this.save();
+      
+      this.logger.success('Resume tailored to job description successfully');
+      return resume;
+    } catch (error) {
+      this.logger.error('Failed to tailor resume', error);
+      throw error;
+    }
+  }
+
   private async exportPDF(themeName?: string): Promise<string> {
     if (!this.currentResume) {
       throw new Error('No resume to export');
